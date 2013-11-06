@@ -1,17 +1,13 @@
 svm
 ===
-Download & start mongoDB 
+1. Download & start mongoDB 
 http://www.mongodb.org/downloads
 
-Download & install ruby 2, Devkit 
+2. Download & install ruby 2, Devkit 
 http://rubyinstaller.org/downloads/
 
-
-
-In command promt:
-
-gem install mongo
-gem install bson_ext
-gem install sinatra
-ruby index.rb
+3. gem install mongo
+4. gem install bson_ext
+5. gem install sinatra
+6. ruby index.rb
 
