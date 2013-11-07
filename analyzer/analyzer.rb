@@ -5,9 +5,6 @@ include Mongo
 
 class Analyzer
 
-
-  @@words_store = Hash.new
-
   def initialize(new_stream)
     @stream = new_stream
   end
@@ -26,10 +23,7 @@ class Analyzer
       text_words[word]+=1
       words_count+=1
     end
-    text_words = calc_weight(text_words, words_count, tone)
-    @@words_store.merge!(text_words) do |k, nv, ov|
-      merge_func(nv, ov)
-    end
+    calc_weight(text_words, words_count, tone)
   end
 
   def calc_weight(data, count, sign = 'pos')
@@ -37,10 +31,6 @@ class Analyzer
       data[key]=100*(val.to_f / count)
       data[key]=-data[key] if sign=='neg'
     end
-  end
-
-  def words_store
-    @@words_store
   end
 
   def learning_step()
@@ -64,7 +54,6 @@ class Analyzer
 
         teacher.delete(word)
       end
-      puts "POS   "+(cur_pos+=100).to_s()+"\n"
     end
 
 
@@ -83,17 +72,17 @@ class Analyzer
   end
 
   def get_file_words()
-    helper = self
-
     threads_count = 4
-    thread_files = Array.new(threads_count)
+
 
     final_words = Hash.new
 
     ['pos', 'neg'].each do |tone|
-      @@words_store=Hash.new
+      thread_files = Array.new(threads_count)
+      local_store=Hash.new
+
       @stream<< "Calc tone "+tone+"\n"
-      helper.get_files(tone).each do |file|
+      self.get_files(tone).each do |file|
         unless ['.', '..'].include?(file)
           file_thread_num = rand(threads_count)
           thread_files[file_thread_num]=[] if thread_files[file_thread_num].nil?
@@ -101,11 +90,13 @@ class Analyzer
         end
       end
 
+      puts "Thread files size #{thread_files.size}"
+
       threads = []
       threads_count.times do |thread_num|
         threads << Thread.new(thread_num) do |cur_num|
           thread_files[cur_num].each do |filename|
-            helper.store(filename, tone)
+            local_store[filename] = self.store(filename, tone)
           end
           @stream<< "Thread #"+thread_num.to_s+" ended"+"\n"
         end
@@ -115,7 +106,14 @@ class Analyzer
         t.join
       end
 
-      final_words.merge!(@@words_store) do |k, nv, ov|
+      tone_words = Hash.new
+      local_store.each do |filename, words|
+        tone_words.merge!(words) do |k, nv, ov|
+          merge_func(nv, ov)
+        end
+      end
+
+      final_words.merge!(tone_words) do |k, nv, ov|
         merge_func(nv, ov)
       end
     end

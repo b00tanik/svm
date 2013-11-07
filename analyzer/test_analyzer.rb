@@ -1,16 +1,12 @@
 require File.expand_path('analyzer/analyzer')
-collection = MongoClient.new('localhost', 27017).db("svm").collection('words')
-collection.ensure_index(:word, {:unique => 1})
 
 helper = Analyzer.new($stdout)
 
 threads_count = 4
-thread_files = Array.new(threads_count)
-
-ratings = Hash.new
 
 ['pos', 'neg'].each do |tone|
   puts "Analyze tone "+tone+"\n"
+  thread_files = Array.new(threads_count)
   helper.get_files(tone).each do |file|
     unless ['.', '..'].include?(file)
       file_thread_num = rand(threads_count)
@@ -34,9 +30,9 @@ ratings = Hash.new
           neg_files+=1
         end
 
-       # puts "File "+filename+" get "+analyze_result.to_s
+        # puts "File "+filename+" get "+analyze_result.to_s
       end
-     puts "Thread #"+thread_num.to_s+" ended"+"\n"
+      puts "Thread #"+thread_num.to_s+" ended"+"\n"
     end
   end
 
