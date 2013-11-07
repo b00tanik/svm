@@ -1,0 +1,50 @@
+require File.expand_path('analyzer/analyzer')
+collection = MongoClient.new('localhost', 27017).db("svm").collection('words')
+collection.ensure_index(:word, {:unique => 1})
+
+helper = Analyzer.new($stdout)
+
+threads_count = 4
+thread_files = Array.new(threads_count)
+
+ratings = Hash.new
+
+['pos', 'neg'].each do |tone|
+  puts "Analyze tone "+tone+"\n"
+  helper.get_files(tone).each do |file|
+    unless ['.', '..'].include?(file)
+      file_thread_num = rand(threads_count)
+      thread_files[file_thread_num]=[] if thread_files[file_thread_num].nil?
+      thread_files[file_thread_num] += ['data/'+tone+'/'+file]
+    end
+  end
+
+  threads = []
+  total_files = 0
+  pos_files = 0
+  neg_files = 0
+  threads_count.times do |thread_num|
+    threads << Thread.new(thread_num) do |cur_num|
+      thread_files[cur_num].each do |filename|
+        analyze_result = helper.analyze(IO.read(filename))
+        total_files+=1
+        if analyze_result>0
+          pos_files+=1
+        else
+          neg_files+=1
+        end
+
+       # puts "File "+filename+" get "+analyze_result.to_s
+      end
+     puts "Thread #"+thread_num.to_s+" ended"+"\n"
+    end
+  end
+
+  threads.each do |t|
+    t.join
+  end
+
+  puts "Analyze complete for tone #{tone}. "
+  puts "Pos: #{((pos_files.to_f/total_files)*100).to_i} %"
+  puts "Neg: #{((neg_files.to_f/total_files)*100).to_i} %"
+end
