@@ -2,6 +2,7 @@ require 'rubygems'
 require 'mongo'
 require 'json'
 include Mongo
+require 'thread'
 
 class Analyzer
 
@@ -82,21 +83,28 @@ class Analyzer
       local_store=Hash.new
 
       @stream<< "Calc tone "+tone+"\n"
+      ind =0
       self.get_files(tone).each do |file|
         unless ['.', '..'].include?(file)
-          file_thread_num = rand(threads_count)
+          file_thread_num = ind % threads_count
           thread_files[file_thread_num]=[] if thread_files[file_thread_num].nil?
           thread_files[file_thread_num] += ['data/'+tone+'/'+file]
+          ind+=1
         end
       end
 
       puts "Thread files size #{thread_files.size}"
 
+      mutex = Mutex.new
       threads = []
       threads_count.times do |thread_num|
-        threads << Thread.new(thread_num) do |cur_num|
-          thread_files[cur_num].each do |filename|
-            local_store[filename] = self.store(filename, tone)
+        threads << Thread.new(thread_files[thread_num]) do |file_list|
+          file_list.each do |filename|
+            store_data = self.store(filename, tone)
+            mutex.synchronize do
+              local_store[filename] = store_data
+            end
+
           end
           @stream<< "Thread #"+thread_num.to_s+" ended"+"\n"
         end

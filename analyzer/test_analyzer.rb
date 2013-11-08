@@ -1,4 +1,5 @@
 require File.expand_path('analyzer/analyzer')
+require 'thread'
 
 helper = Analyzer.new($stdout)
 
@@ -19,17 +20,19 @@ threads_count = 4
   total_files = 0
   pos_files = 0
   neg_files = 0
+  mutex = Mutex.new
   threads_count.times do |thread_num|
-    threads << Thread.new(thread_num) do |cur_num|
-      thread_files[cur_num].each do |filename|
+    threads << Thread.new(thread_files[thread_num]) do |file_list|
+      file_list.each do |filename|
         analyze_result = helper.analyze(IO.read(filename))
-        total_files+=1
-        if analyze_result>0
-          pos_files+=1
-        else
-          neg_files+=1
+        mutex.synchronize do
+          total_files+=1
+          if analyze_result>0
+            pos_files+=1
+          else
+            neg_files+=1
+          end
         end
-
         # puts "File "+filename+" get "+analyze_result.to_s
       end
       puts "Thread #"+thread_num.to_s+" ended"+"\n"
