@@ -6,6 +6,10 @@ require 'thread'
 
 class Analyzer
 
+  def get_mongo
+       MongoClient.new('localhost', 27017).db("svm")
+  end
+
   def initialize(new_stream)
     @stream = new_stream
   end
@@ -38,7 +42,7 @@ class Analyzer
     @stream<<'Start analyze'+"\n"
     teacher = get_file_words()
 
-    collection = MongoClient.new('localhost', 27017).db("svm").collection('words')
+    collection = get_mongo.collection('words')
     collection.ensure_index(:word, {:unique => 1})
 
     @stream<<'Analyzing words count '+teacher.size.to_s+"\n"
@@ -136,7 +140,7 @@ class Analyzer
 
 
   def analyze(text)
-    collection = MongoClient.new('localhost', 27017).db("svm").collection('words')
+    collection =get_mongo.collection('words')
     search_words = text.scan(/\w+/)
     rating = 0
     collection.find('word' => {'$in' => search_words}).each do |word_data|
